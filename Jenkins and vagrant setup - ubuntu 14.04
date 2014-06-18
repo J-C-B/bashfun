@@ -237,9 +237,7 @@ end
 #start vagrant
 vagrant up
 
-ifconfig
-
 rm -r /home/john/Desktop/vagrant_1.6.3_x86_64.deb
-echo "yaY"
+
 #start firefox to show Jenkins ui
 firefox http://127.0.0.1:8080/
