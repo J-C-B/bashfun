@@ -1,0 +1,245 @@
+#!/bin/bash
+
+#Author John Barnett
+#Created 17/06/14 v0.5
+
+#This script was created for use on ubuntu 14.04 LTS
+
+#Script to be run as sudo
+
+#This script will install and configure;
+##Jenkins CI and required Java elements       - http://jenkins-ci.org/
+##nginx on port 8080 (For Jenkins UI)         - http://nginx.org/
+##Vagrant                                     - http://www.vagrantup.com/
+##Virtualbox (plus dkms) for use with vagrant - https://www.virtualbox.org/
+
+#--------------------------Lets get down to it!---------------------------#
+
+
+#------------- add java jdk and jre (used for Jenkins)
+sudo apt-get update
+sudo apt-get install openjdk-7-jre and openjdk-7-jdk -y
+
+#------------- add virtualbox
+
+sudo apt-get install dkms -y
+
+sudo echo  "
+## virtualbox repo
+deb http://download.virtualbox.org/virtualbox/debian trusty contrib" >> /etc/apt/sources.list
+
+wget -q http://download.virtualbox.org/virtualbox/debian/oracle_vbox.asc -O- | sudo apt-key add -
+sudo apt-get update
+sudo apt-get install virtualbox-4.3 -y
+#sudo apt-get install virtualbox -y
+
+
+
+#------------- add jenkins
+wget -q -O - http://pkg.jenkins-ci.org/debian/jenkins-ci.org.key | sudo apt-key add -
+sudo sh -c 'echo deb http://pkg.jenkins-ci.org/debian binary/ > /etc/apt/sources.list.d/jenkins.list'
+sudo apt-get update
+sudo apt-get install jenkins -y
+
+#------------ Setting up an Nginx Proxy for port 80 -> 8080
+
+#This configuration will setup Nginx to proxy port 80 to 8080 so that you can keep Jenkins on 8080. 
+#Instructions originally found in a GitHub Gist from rdegges: https://gist.github.com/913102
+
+#    Install Nginx.
+
+    sudo apt-get install nginx -y
+
+#    Remove default configuration.
+
+    
+    sudo rm /etc/nginx/sites-available/sites-enabled/default
+
+#	Create new configuration for Jenkins. This example uses echo, but you can use your favorite text editor. 
+#	Make sure to replace 'ci.yourcompany.com' with your domain name.
+#	Note: Sometimes your permissions (umask, etc) might be setup such that this won't work. 
+#	Create the file somewhere else then copy it into place if you run into that problem.
+
+    sudo mkdir /etc/nginx/sites-available/sites-enabled/
+    sudo touch /etc/nginx/sites-available/sites-enabled/jenkins
+    sudo echo "upstream app_server {
+        server 127.0.0.1:8080 fail_timeout=0;
+    }
+
+    server {
+        listen 80;
+        listen [::]:80 default ipv6only=on;
+        server_name ci.barnett.net;
+
+        location / {
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header Host $http_host;
+            proxy_redirect off;
+
+            if (!-f $request_filename) {
+                proxy_pass http://app_server;
+                break;
+            }
+        }
+    }" > /etc/nginx/sites-available/sites-enabled/jenkins
+    #^D # Hit CTRL + D to finish writing the file
+
+#    Link your configuration from sites-available to sites-enabled:
+
+    sudo ln -s /etc/nginx/sites-available/jenkins /etc/nginx/sites-enabled/
+
+#    Restart Nginx
+
+    sudo service nginx restart
+
+#----------------- adding Vagrant
+cd /home/john/Downloads/ | wget  https://dl.bintray.com/mitchellh/vagrant/vagrant_1.6.3_x86_64.deb
+sudo dpkg -i vagrant_1.6.3_x86_64.deb
+#sudo apt-get install vagrant -y
+
+pwd
+mkdir /home/john/vagrant/
+mkdir /home/john/vagrant/box1/
+cd /home/john/vagrant/box1/
+vagrant box add hashicorp/precise32 -f
+vagrant init
+
+
+
+#add custom vagrantfile
+sudo touch /home/john/vagrant/box1/Vagrantfile
+sudo echo "
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = \"2\"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  # All Vagrant configuration is done here. The most common configuration
+  # options are documented and commented below. For a complete reference,
+  # please see the online documentation at vagrantup.com.
+
+  # Every Vagrant virtual environment requires a box to build off of.
+  config.vm.box = \"hashicorp/precise32\"
+
+  # Disable automatic box update checking. If you disable this, then
+  # boxes will only be checked for updates when the user runs
+  # `vagrant box outdated`. This is not recommended.
+  # config.vm.box_check_update = false
+
+  # Create a forwarded port mapping which allows access to a specific port
+  # within the machine from a port on the host machine. In the example below,
+  # accessing \"localhost:8080\" will access port 80 on the guest machine.
+  # config.vm.network \"forwarded_port\", guest: 80, host: 8080
+
+  # Create a private network, which allows host-only access to the machine
+  # using a specific IP.
+  # config.vm.network \"private_network\", ip: \"192.168.33.10\"
+
+  # Create a public network, which generally matched to bridged network.
+  # Bridged networks make the machine appear as another physical device on
+  # your network.
+config.vm.network \"public_network\", bridge: 'eth0'
+
+
+  # If true, then any SSH connections made will enable agent forwarding.
+  # Default value: false
+  # config.ssh.forward_agent = true
+
+  # Share an additional folder to the guest VM. The first argument is
+  # the path on the host to the actual folder. The second argument is
+  # the path on the guest to mount the folder. And the optional third
+  # argument is a set of non-required options.
+  # config.vm.synced_folder \"../data\", \"/vagrant_data\"
+
+  # Provider-specific configuration so you can fine-tune various
+  # backing providers for Vagrant. These expose provider-specific options.
+  # Example for VirtualBox:
+  #
+ config.vm.provider \"virtualbox\" do |vb|
+  #   # Don't boot with headless mode
+    vb.gui = true
+  #
+  #   # Use VBoxManage to customize the VM. For example to change memory:
+    vb.customize [\"modifyvm\", :id, \"--memory\", \"512\"]
+ end
+  #
+  # View the documentation for the provider you're using for more
+  # information on available options.
+
+  # Enable provisioning with CFEngine. CFEngine Community packages are
+  # automatically installed. For example, configure the host as a
+  # policy server and optionally a policy file to run:
+  #
+  # config.vm.provision \"cfengine\" do |cf|
+  #   cf.am_policy_hub = true
+  #   # cf.run_file = \"motd.cf\"
+  # end
+  #
+  # You can also configure and bootstrap a client to an existing
+  # policy server:
+  #
+  # config.vm.provision \"cfengine\" do |cf|
+  #   cf.policy_server_address = \"10.0.2.15\"
+  # end
+
+  # Enable provisioning with Puppet stand alone.  Puppet manifests
+  # are contained in a directory path relative to this Vagrantfile.
+  # You will need to create the manifests directory and a manifest in
+  # the file default.pp in the manifests_path directory.
+  #
+  # config.vm.provision \"puppet\" do |puppet|
+  #   puppet.manifests_path = \"manifests\"
+  #   puppet.manifest_file  = \"site.pp\"
+  # end
+
+  # Enable provisioning with chef solo, specifying a cookbooks path, roles
+  # path, and data_bags path (all relative to this Vagrantfile), and adding
+  # some recipes and/or roles.
+  #
+  # config.vm.provision \"chef_solo\" do |chef|
+  #   chef.cookbooks_path = \"../my-recipes/cookbooks\"
+  #   chef.roles_path = \"../my-recipes/roles\"
+  #   chef.data_bags_path = \"../my-recipes/data_bags\"
+  #   chef.add_recipe \"mysql\"
+  #   chef.add_role \"web\"
+  #
+  #   # You may also specify custom JSON attributes:
+  #   chef.json = { mysql_password: \"foo\" }
+  # end
+
+  # Enable provisioning with chef server, specifying the chef server URL,
+  # and the path to the validation key (relative to this Vagrantfile).
+  #
+  # The Opscode Platform uses HTTPS. Substitute your organization for
+  # ORGNAME in the URL and validation key.
+  #
+  # If you have your own Chef Server, use the appropriate URL, which may be
+  # HTTP instead of HTTPS depending on your configuration. Also change the
+  # validation key to validation.pem.
+  #
+  # config.vm.provision \\"chef_client\\" do |chef|
+  #   chef.chef_server_url = \\"https://api.opscode.com/organizations/ORGNAME\\"
+  #   chef.validation_key_path = \"ORGNAME-validator.pem\"
+  # end
+  #
+  # If you're using the Opscode platform, your validator client is
+  # ORGNAME-validator, replacing ORGNAME with your organization name.
+  #
+  # If you have your own Chef Server, the default validation client name is
+  # chef-validator, unless you changed the configuration.
+  #
+  #   chef.validation_client_name = \"ORGNAME-validator\"
+end
+" > /home/john/vagrant/box1/Vagrantfile
+
+#start vagrant
+vagrant up
+
+ifconfig
+
+rm -r /home/john/Desktop/vagrant_1.6.3_x86_64.deb
+echo "yaY"
+#start firefox to show Jenkins ui
+firefox http://127.0.0.1:8080/
