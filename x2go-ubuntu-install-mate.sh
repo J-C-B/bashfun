@@ -7,7 +7,7 @@
 ####                        John 11/08/15                                       ####
 ####################################################################################
 
-sudo apt-get update && apt-get install python-software-properties -y && add-apt-repository ppa:x2go/stable -y
+sudo apt-get update -y && apt-get install python-software-properties -y && add-apt-repository ppa:x2go/stable -y
 
 sudo apt-get update -y && apt-get install x2goserver x2goserver-xsession -y
 
