@@ -11,7 +11,7 @@
 
 
 echo -e "Setting up prereqs...."
-sudo apt-get install mysql-server apache2 git-core git php5 php5-mysql php5-gd php5-curl php-apc php5-cli -y
+sudo apt-get install mysql-server apache2 git-core git php5 php5-mysql php5-gd php5-curl php-apc php5-cli python-pip -y
 
 echo -e "Creating folder...."
 
@@ -67,6 +67,8 @@ cd /var/www/phabricator/phabricator/
 
 
 sudo service mysql restart
+
+sudo pip install Pygments
 
 echo "yaY"
 #start firefox to show Phabricator ui
