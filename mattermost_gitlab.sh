@@ -25,7 +25,7 @@ su - postgres -c 'psql -c "GRANT ALL PRIVILEGES ON DATABASE mattermost to mmuser
  
 useradd mattermost -s /bin/bash -p `mkpasswd $USERPASS` -m
  
-su - mattermost -c "wget http://releases.mattermost.com/3.2.0/mattermost-team-3.2.0-linux-amd64.tar.gz"
+su - mattermost -c "wget https://releases.mattermost.com/4.2.0/mattermost-4.2.0-linux-amd64.tar.gz"
 cd ~mattermost
 tar xvzf mattermost-team-3.2.0-linux-amd64.tar.gz
 
