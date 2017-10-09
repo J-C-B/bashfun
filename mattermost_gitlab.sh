@@ -27,7 +27,8 @@ useradd mattermost -s /bin/bash -p `mkpasswd $USERPASS` -m
  
 su - mattermost -c "wget https://releases.mattermost.com/4.2.0/mattermost-4.2.0-linux-amd64.tar.gz"
 cd ~mattermost
-tar xvzf mattermost-4.2.0-linux-amd64.tar.gz
+tar xvzf tar -xvzf mattermost*.gz
+
 
 
 mv mattermost/* .
